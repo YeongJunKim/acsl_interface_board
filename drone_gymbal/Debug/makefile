@@ -52,8 +52,8 @@ drone_gymbal.list \
 all: drone_gymbal.elf secondary-outputs
 
 # Tool invocations
-drone_gymbal.elf: $(OBJS) $(USER_OBJS) C:\Users\dud37\Desktop\workspace\acsl_interface_board\drone_gymbal\STM32F446RETX_FLASH.ld
-	arm-none-eabi-g++ -o "drone_gymbal.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"C:\Users\dud37\Desktop\workspace\acsl_interface_board\drone_gymbal\STM32F446RETX_FLASH.ld" --specs=nosys.specs -Wl,-Map="drone_gymbal.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -lstdc++ -lsupc++ -Wl,--end-group
+drone_gymbal.elf: $(OBJS) $(USER_OBJS) C:\Users\colson\Desktop\workspace\acsl_interface_board\drone_gymbal\STM32F446RETX_FLASH.ld
+	arm-none-eabi-g++ -o "drone_gymbal.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"C:\Users\colson\Desktop\workspace\acsl_interface_board\drone_gymbal\STM32F446RETX_FLASH.ld" --specs=nosys.specs -Wl,-Map="drone_gymbal.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -lstdc++ -lsupc++ -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 

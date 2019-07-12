@@ -29,6 +29,12 @@
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
 
+static HAL_StatusTypeDef CAN_Polling(void);
+CAN_TxHeaderTypeDef   TxHeader;
+CAN_RxHeaderTypeDef   RxHeader;
+uint8_t               TxData[8];
+uint8_t               RxData[8];
+uint32_t              TxMailbox;
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -100,14 +106,32 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  MX_CAN1_Init();
+  //MX_CAN1_Init();
   MX_TIM6_Init();
   MX_TIM7_Init();
   MX_USART1_UART_Init();
   MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
 
+  if(CAN_Polling() == HAL_OK)
+  {
+	  while(1)
+	  {
+		  HAL_Delay(10);
+	  }
+  }
+  else
+  {
+	  while(1)
+	  {
+		  HAL_Delay(10);
+	  }
+  }
 
+  while(1)
+  {
+
+  }
 
   CAN_FilterTypeDef can_filter;
 
@@ -123,9 +147,10 @@ int main(void)
 
   HAL_CAN_ConfigFilter(&hcan1, &can_filter);
 
+  HAL_CAN_ActivateNotification(&hcan1, CAN_IT_TX_MAILBOX_EMPTY | CAN_IT_ERROR);
+
   HAL_CAN_Start(&hcan1);
 
-  HAL_CAN_ActivateNotification(&hcan1, CAN_IT_TX_MAILBOX_EMPTY | CAN_IT_ERROR);
 
   CAN_TxHeaderTypeDef canTxHeader;
   canTxHeader.StdId = 0x01;
@@ -148,6 +173,7 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
 	  HAL_Delay(10);
+	  HAL_CAN_AddTxMessage(&hcan1, &canTxHeader, sendData, pTxMailbox);
   }
   /* USER CODE END 3 */
 }
@@ -218,10 +244,10 @@ static void MX_CAN1_Init(void)
 
   /* USER CODE END CAN1_Init 1 */
   hcan1.Instance = CAN1;
-  hcan1.Init.Prescaler = 9;
+  hcan1.Init.Prescaler = 5;
   hcan1.Init.Mode = CAN_MODE_NORMAL;
   hcan1.Init.SyncJumpWidth = CAN_SJW_1TQ;
-  hcan1.Init.TimeSeg1 = CAN_BS1_3TQ;
+  hcan1.Init.TimeSeg1 = CAN_BS1_7TQ;
   hcan1.Init.TimeSeg2 = CAN_BS2_1TQ;
   hcan1.Init.TimeTriggeredMode = DISABLE;
   hcan1.Init.AutoBusOff = DISABLE;
@@ -434,6 +460,101 @@ void HAL_CAN_TxMailbox2AbortCallback(CAN_HandleTypeDef *hcan)
 void HAL_CAN_ErrorCallback(CAN_HandleTypeDef *hcan)
 {
 	checker.error++;
+}
+
+HAL_StatusTypeDef CAN_Polling(void)
+{
+  CAN_FilterTypeDef  sFilterConfig;
+
+  /*##-1- Configure the CAN peripheral #######################################*/
+  hcan1.Instance = CAN1;
+
+  hcan1.Init.TimeTriggeredMode = DISABLE;
+  hcan1.Init.AutoBusOff = DISABLE;
+  hcan1.Init.AutoWakeUp = DISABLE;
+  hcan1.Init.AutoRetransmission = ENABLE;
+  hcan1.Init.ReceiveFifoLocked = DISABLE;
+  hcan1.Init.TransmitFifoPriority = DISABLE;
+  hcan1.Init.Mode = CAN_MODE_NORMAL;
+  hcan1.Init.SyncJumpWidth = CAN_SJW_1TQ;
+  hcan1.Init.TimeSeg1 = CAN_BS1_3TQ;
+  hcan1.Init.TimeSeg2 = CAN_BS2_1TQ;
+  hcan1.Init.Prescaler = 9;
+
+  if(HAL_CAN_Init(&hcan1) != HAL_OK)
+  {
+    /* Initialization Error */
+    Error_Handler();
+  }
+
+  /*##-2- Configure the CAN Filter ###########################################*/
+  sFilterConfig.FilterBank = 0;
+  sFilterConfig.FilterMode = CAN_FILTERMODE_IDMASK;
+  sFilterConfig.FilterScale = CAN_FILTERSCALE_32BIT;
+  sFilterConfig.FilterIdHigh = 0x0000;
+  sFilterConfig.FilterIdLow = 0x0000;
+  sFilterConfig.FilterMaskIdHigh = 0x0000;
+  sFilterConfig.FilterMaskIdLow = 0x0000;
+  sFilterConfig.FilterFIFOAssignment = CAN_RX_FIFO0;
+  sFilterConfig.FilterActivation = ENABLE;
+  sFilterConfig.SlaveStartFilterBank = 14;
+
+  if(HAL_CAN_ConfigFilter(&hcan1, &sFilterConfig) != HAL_OK)
+  {
+    /* Filter configuration Error */
+    Error_Handler();
+  }
+
+  /*##-3- Start the CAN peripheral ###########################################*/
+  if (HAL_CAN_Start(&hcan1) != HAL_OK)
+  {
+    /* Start Error */
+    Error_Handler();
+  }
+
+  /*##-4- Start the Transmission process #####################################*/
+  TxHeader.StdId = 0x11;
+  TxHeader.RTR = CAN_RTR_DATA;
+  TxHeader.IDE = CAN_ID_STD;
+  TxHeader.DLC = 2;
+  TxHeader.TransmitGlobalTime = DISABLE;
+  TxData[0] = 0xCA;
+  TxData[1] = 0xFE;
+
+  /* Request transmission */
+  if(HAL_CAN_AddTxMessage(&hcan1, &TxHeader, TxData, &TxMailbox) != HAL_OK)
+  {
+    /* Transmission request Error */
+    Error_Handler();
+  }
+
+  /* Wait transmission complete */
+  while(HAL_CAN_GetTxMailboxesFreeLevel(&hcan1) != 3) {}
+
+  /*##-5- Start the Reception process ########################################*/
+  if(HAL_CAN_GetRxFifoFillLevel(&hcan1, CAN_RX_FIFO0) != 1)
+  {
+    /* Reception Missing */
+    Error_Handler();
+  }
+
+  if(HAL_CAN_GetRxMessage(&hcan1, CAN_RX_FIFO0, &RxHeader, RxData) != HAL_OK)
+  {
+    /* Reception Error */
+    Error_Handler();
+  }
+
+  if((RxHeader.StdId != 0x11)                     ||
+     (RxHeader.RTR != CAN_RTR_DATA)               ||
+     (RxHeader.IDE != CAN_ID_STD)                 ||
+     (RxHeader.DLC != 2)                          ||
+     ((RxData[0]<<8 | RxData[1]) != 0xCAFE))
+  {
+    /* Rx message Error */
+    return HAL_ERROR;
+  }
+
+  return HAL_OK; /* Test Passed */
 }
 /* USER CODE END 4 */
 
