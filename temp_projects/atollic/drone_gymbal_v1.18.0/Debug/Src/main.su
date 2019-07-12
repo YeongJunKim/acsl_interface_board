@@ -1,0 +1,6 @@
+main.c:155:6:SystemClock_Config	88	static
+main.c:344:6:HAL_CAN_RxCpltCallback	16	static
+main.c:359:6:mw_ahrsv1_trans	16	static
+main.c:374:6:can_init_user	56	static
+main.c:87:5:main	40	static
+main.c:410:6:_Error_Handler	0	static
