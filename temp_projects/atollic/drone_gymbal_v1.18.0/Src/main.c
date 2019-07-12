@@ -40,8 +40,10 @@
 #include "main.h"
 #include "stm32f4xx_hal.h"
 #include "MW-AHRSv1.h"
+
 /* USER CODE BEGIN Includes */
 
+#define AX_WRITE_DATA  3
 /* USER CODE END Includes */
 
 /* Private variables ---------------------------------------------------------*/
@@ -78,6 +80,15 @@ void can_init_user(void);
 
 void mw_ahrsv1_trans(void);
 void mw_ahrsv1_rcv(void);
+
+
+void ax12_SetRegister(uint8_t id, uint8_t regstart, uint16_t data);
+uint8_t sendData[100] = { 0, };
+
+
+float yaw_data;
+float roll_data;
+float pitch_data;
 /* USER CODE END PFP */
 
 /* USER CODE BEGIN 0 */
@@ -136,6 +147,47 @@ int main(void)
   /* USER CODE END WHILE */
 
   /* USER CODE BEGIN 3 */
+
+		yaw_data = ahrs_obj.e_yaw;
+		if(yaw_data <= -150){
+			yaw_data = -150;
+		}
+		else if(yaw_data >= 200){
+			yaw_data = 200;
+		}
+
+		roll_data = ahrs_obj.e_roll;
+		if(roll_data <= -150){
+			roll_data = -150;
+		}
+		else if(roll_data >= 200){
+			roll_data = 200;
+		}
+
+		pitch_data = ahrs_obj.e_pitch;
+		if(pitch_data <= -150){
+			pitch_data = -150;
+		}
+		else if(pitch_data >= 200){
+			pitch_data = 200;
+		}
+
+		ax12_SetRegister(1, 30, 512-(yaw_data*3.4));
+		HAL_UART_Transmit(&huart1, sendData, 9, 0xFF);
+		ax12_SetRegister(1, 32, 512);
+		HAL_UART_Transmit(&huart1, sendData, 9, 0xFF);
+
+		ax12_SetRegister(3, 30, 512-(roll_data*3.4));
+		HAL_UART_Transmit(&huart1, sendData, 9, 0xFF);
+		ax12_SetRegister(3, 32, 150);
+		HAL_UART_Transmit(&huart1, sendData, 9, 0xFF);
+
+		ax12_SetRegister(2, 30, 512+(pitch_data*3.4));
+		HAL_UART_Transmit(&huart1, sendData, 9, 0xFF);
+		ax12_SetRegister(2, 32, 150);
+		HAL_UART_Transmit(&huart1, sendData, 9, 0xFF);
+
+
 	  now_tick = HAL_GetTick();
 	  if(now_tick - past_tick >= 1000)
 	  {
@@ -289,7 +341,7 @@ static void MX_USART1_UART_Init(void)
 {
 
   huart1.Instance = USART1;
-  huart1.Init.BaudRate = 115200;
+  huart1.Init.BaudRate = 1000000;
   huart1.Init.WordLength = UART_WORDLENGTH_8B;
   huart1.Init.StopBits = UART_STOPBITS_1;
   huart1.Init.Parity = UART_PARITY_NONE;
@@ -340,6 +392,20 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+void ax12_SetRegister(uint8_t id, uint8_t regstart, uint16_t data) {
+	sendData[0] = 0xFF;
+	sendData[1] = 0xFF;
+	sendData[2] = id;
+	sendData[3] = 5;
+	sendData[4] = AX_WRITE_DATA;
+	sendData[5] = regstart;
+	sendData[6] = (data & 0xFF);
+	sendData[7] = (data & 0xFF00) >> 8;
+	sendData[8] = (0xFF
+			- ((id + 5 + AX_WRITE_DATA + regstart + (data & 0xFF)
+					+ ((data & 0xFF00) >> 8)) % 256));
+
+}
 
 void HAL_CAN_RxCpltCallback(CAN_HandleTypeDef* hcan)
 {
