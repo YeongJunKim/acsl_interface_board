@@ -21,7 +21,7 @@
 *.smod
 
 # Compiled Static libraries
-*.lai
+*.lai`
 *.la
 *.a
 *.lib
@@ -30,7 +30,8 @@
 *.exe
 *.out
 *.app
+`
 
-
-/Debug
+**/Debug/
+**/.settings/
 .metadata/
