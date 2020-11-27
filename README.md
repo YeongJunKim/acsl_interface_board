@@ -4,4 +4,4 @@ multi communication interface board
 
 
 ##### rosserial_gimbal_3x
-acsl interface board + SOS lab Lidar 사용시 필요
+acsl interface board + SOS lab: gl3 Lidar 사용시 필요
